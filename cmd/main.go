@@ -1,8 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -11,7 +14,10 @@ func main() {
 	//checkTimePerformance()
 	//learnStringRuneByte()
 	//learnStruct()
-	learnPointer()
+	//learnPointer()
+	//learnGoroutines()
+	//learnGoroutinesNextLevel()
+	learnGenerics()
 }
 
 func learnArraySliceMapLoop() {
@@ -150,4 +156,108 @@ func square(thing2 *[5]float64) [5]float64 {
 	}
 
 	return *thing2
+}
+
+func learnGoroutines() {
+	var wg sync.WaitGroup
+	go sayHello(&wg)
+	fmt.Println("Hello dari main function!")
+	wg.Wait()
+}
+
+func sayHello(wg *sync.WaitGroup) {
+	wg.Add(1)
+	fmt.Println("Hello dari goroutine!")
+	wg.Done()
+}
+
+func worker(id int, jobs <-chan int, results chan<- int) {
+	for j := range jobs {
+		fmt.Println("Pekerja", id, "siap!")
+		fmt.Println("Pekerja", id, "mengerjakan job", j)
+		time.Sleep(time.Second)
+		fmt.Println("Pekerja", id, "sudah menyelesaikan job", j)
+		results <- j * 2
+	}
+
+}
+
+func learnGoroutinesNextLevel() {
+	const numJobs = 5
+	jobs := make(chan int, numJobs)
+	results := make(chan int, numJobs)
+
+	for w := 1; w <= 3; w++ {
+		go worker(w, jobs, results)
+	}
+
+	for j := 1; j <= 5; j++ {
+		jobs <- j
+	}
+
+	close(jobs)
+
+	fmt.Println("--- Mengambil hasil ---")
+	for r := 1; r <= numJobs; r++ {
+		result := <-results
+		fmt.Println("Hasil diterima:", result)
+	}
+
+	fmt.Println("Semua kerjaan sudah selesai")
+}
+
+func learnGenerics() {
+	//var intSlice = []int{1, 2, 3}
+	//fmt.Println(sumSlice(intSlice))
+	//
+	//var floatSlice = []float32{5.0, 10.0, 15.0}
+	//fmt.Println(sumSlice(floatSlice))
+
+	//var contacts []contactInfo = loadJSON[contactInfo]("./contactInfo.json")
+	//fmt.Printf("\n%+v", contacts)
+
+	var gasCar = car[gasEngine]{
+		carMake:  "Honda",
+		carModel: "Civic",
+		engine: gasEngine{
+			gallons: 12,
+			mgp:     40,
+		},
+	}
+
+	fmt.Println(gasCar)
+}
+
+func sumSlice[T int | float32 | float64](slice []T) T {
+	var sum T
+	for _, v := range slice {
+		sum += v
+	}
+	return sum
+}
+
+type contactInfo struct {
+	Name  string
+	Email string
+}
+
+type purchaseInfo struct {
+	Name   string
+	Price  float32
+	Amount int
+}
+
+func loadJSON[T contactInfo | purchaseInfo](filePath string) []T {
+	data, _ := os.ReadFile(filePath)
+
+	var loaded = []T{}
+	json.Unmarshal(data, &loaded)
+
+	return loaded
+}
+
+type car[T gasEngine | electricEngine] struct {
+	carMake  string
+	carModel string
+	engine   T
 }
